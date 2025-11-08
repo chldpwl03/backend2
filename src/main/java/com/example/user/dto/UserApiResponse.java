@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class UserApiResponse<T>{
-    private String status; //성공 또는 에러
+    private String status; //성공("success") 또는 에러("error")
     private String message; //성공 또는 에러에 대한 부가 메세지를 전송
     private T data; //전송할 데이터 오브젝트
 

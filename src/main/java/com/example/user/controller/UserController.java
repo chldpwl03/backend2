@@ -1,9 +1,12 @@
 package com.example.user.controller;
 
+import com.example.user.dto.LoginUserDTO;
+import com.example.user.dto.LoginUserResponseDTO;
 import com.example.user.dto.SignupUserDTO;
 import com.example.user.dto.UserApiResponse;
 import com.example.user.entity.User;
 import com.example.user.service.UserService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,8 +16,8 @@ import org.springframework.web.bind.annotation.*;
 //리퀘스트의 종류(방법): get, post(form), put(입력), delete(삭제), update(수정)...
 
 
-@RestController
-@RequiredArgsConstructor
+@RestController //이 클래스를 RestController로 만듬 >>respans를 JSON 구조로 전달
+@RequiredArgsConstructor    //private final로 선언된 멤버 필드를 자동 주입
 @RequestMapping("/api/user")
 public class UserController {
     private final UserService userService;
@@ -32,8 +35,10 @@ public class UserController {
         return ResponseEntity.ok(apiResponse); //Response code:200
     }
 
-    //signup: 회원가입 리퀘스트 처리부
     /*
+    * 회원가입 요청  처리
+    * param: signupUserDTO signupDTO
+    * 아래와 같이 JSON형태로 전달한다
     * {
     * "email": "qwer@gmail.com"
     * "password" : "1234"
@@ -85,7 +90,7 @@ public class UserController {
                     "회원가입 실패",
                     null
             );
-            return ResponseEntity.badRequest().bady(response);
+            return ResponseEntity.badRequest().body(response);
         }catch (IllegalArgumentException e){
             UserApiResponse<String> response = new UserApiResponse<>(
                     "error",
@@ -105,10 +110,83 @@ public class UserController {
     }
 
     //login: 로그인 리퀘스트 처리부
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginUserDTO loginUserDTO, HttpSession session){
+        try{
+            //LoginUserDTO에 누락된 정보가 있는지 검사
+            if(loginUserDTO.getEmail()==null || loginUserDTO.getEmail().isEmpty()){
+                UserApiResponse<String> response = new UserApiResponse<>(
+                        "error",
+                        "이메일은 필수 필드입니다",
+                        null
+                );
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (loginUserDTO.getPassword() == null || loginUserDTO.getPassword().isEmpty()) {
+                UserApiResponse<String> response = new UserApiResponse<>(
+                        "error",
+                        "비밀번호는 필수 피드입니다",
+                        null
+                );
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            LoginUserResponseDTO dto = userService.login(loginUserDTO);
+            //session 객체를 만들어서 서버와 클라이언트가 가짐
+            session.setAttribute("loginUser", dto); //로그인 처리
+
+
+            UserApiResponse<LoginUserResponseDTO> response = new UserApiResponse<>(
+                    "success",
+                    "로그인 성공",
+                    dto
+            );
+            return ResponseEntity.ok(response);
+/**
+ * {
+ *      "id":1,
+ *      "email":qwer@ccccccccccc
+ *      "nick_name":아이유
+ * }
+ * */
+        }catch (IllegalArgumentException e){
+            UserApiResponse<String> response = new UserApiResponse<>(
+                    "error",
+                    e.getMessage(),
+                    null);
+            return ResponseEntity.badRequest().body(response);
+
+        }catch (Exception e){
+            UserApiResponse<String> response = new UserApiResponse<>(
+                    "error",
+                    e.getMessage(),
+                    null);
+            return ResponseEntity.internalServerError().body(response);
+
+
+        }
+    }
 
     //logout: 로그아웃 리퀘스트 처리부
+    @PostMapping("/logout")
+    public ResponseEntity<?>logout(HttpSession session){
+        session.invalidate(); //현재 사용자(스래드)session 클리어
+        return ResponseEntity.ok(new UserApiResponse<>("success","로그아웃 되었습니다",null));
+    }
 
     //session: 세션 확인(로그인 확인) 처리부
-
+//    session 은 상태(state) 객체이다
     //로그인한 사용자만 접근 가능한 리퀘스트 테스트
+    @GetMapping("/session")
+    public ResponseEntity<?>checkSession(HttpSession session){
+        LoginUserResponseDTO userDTO = (LoginUserResponseDTO)session.getAttribute("loginUser");
+        if(userDTO == null){
+            //HTTP ERROR 401 : Unauthorized
+            return ResponseEntity.status(401).body("로그인이 필요합니다");
+        }
+        //로그인 사용자
+        String data="사용자 데이터 : " + userDTO.getNick_name() + "님, 반갑습니다";
+        return ResponseEntity.ok(new UserApiResponse<String>("success","로그인 사용자",data));
+    }
+
 }

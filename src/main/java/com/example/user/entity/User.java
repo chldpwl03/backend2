@@ -1,5 +1,6 @@
 package com.example.user.entity;
 
+import com.example.user.dto.LoginUserResponseDTO;
 import com.example.user.dto.SignupUserDTO;
 import jakarta.persistence.*;
 import lombok.*;
@@ -68,4 +69,13 @@ public class User {
 
         return user;
     }
+
+    public static LoginUserResponseDTO toLoginUserRespanse(User user){
+        LoginUserResponseDTO dto = new LoginUserResponseDTO();
+        dto.setId(user.getId());
+        dto.setEmail(user.getEmail());
+        dto.setNick_name(user.getNickName());
+        return dto;
+    }
+
 }
